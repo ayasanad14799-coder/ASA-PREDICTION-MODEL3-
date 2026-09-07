@@ -12,7 +12,7 @@ from streamlit_gsheets import GSheetsConnection
 # 1. إعدادات الصفحة الأساسية
 # =============================================================================
 st.set_page_config(
-    page_title="ASA-PREDICTION MODEL 2",
+    page_title="ASA-PREDICTION MODEL 3",
     page_icon="🏗️",
     layout="wide"
 )
@@ -28,12 +28,12 @@ def check_login():
         col_left, col_mid, col_right = st.columns([1, 2, 1])
 
         with col_left:
-            st.image("https://raw.githubusercontent.com/ayasanad14799-coder/ASA-PREDICTION-MODEL-2/main/OIP.jfif", width=120)
+            st.image("https://raw.githubusercontent.com/ayasanad14799-coder/ASA-PREDICTION-MODEL3-/main/OIP.jfif", width=120)
 
         with col_mid:
             st.markdown("""
                 <div style='text-align: center; font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;'>
-                    <h1 style='color: #1E3A8A; margin-bottom: 5px; font-weight: 800;'>ASA-PREDICTION MODEL 2</h1>
+                    <h1 style='color: #1E3A8A; margin-bottom: 5px; font-weight: 800;'>ASA-PREDICTION MODEL 3</h1>
                     <h3 style='margin-top: 0px; color: #4B5563; font-weight: 600;'>By: Eng. Aya Mohamed Sanad Aboud</h3>
                     <p style='font-size: 1.15em; color: #374151; font-weight: 500; padding-top: 8px; border-top: 1.5px solid #E5E7EB; display: inline-block;'>
                         M.Sc. Researcher in Structural Engineering
@@ -42,7 +42,7 @@ def check_login():
             """, unsafe_allow_html=True)
 
         with col_right:
-            st.image("https://raw.githubusercontent.com/ayasanad14799-coder/ASA-PREDICTION-MODEL-2/main/LOGO.png", width=120)
+            st.image("https://raw.githubusercontent.com/ayasanad14799-coder/ASA-PREDICTION-MODEL3-/main/LOGO.png", width=120)
 
         st.markdown("<br>", unsafe_allow_html=True)
         st.divider()
@@ -67,13 +67,13 @@ def show_academic_header():
     col_left, col_mid, col_right = st.columns([1, 3, 1])
     
     with col_left:
-        st.image("https://raw.githubusercontent.com/ayasanad14799-coder/ASA-PREDICTION-MODEL-2/main/LOGO.png", width=130)
+        st.image("https://raw.githubusercontent.com/ayasanad14799-coder/ASA-PREDICTION-MODEL3-/main/LOGO.png", width=130)
         
     with col_mid:
         st.markdown("""
             <div style='text-align: center;'>
                 <h1 style='color: #1E3A8A; font-size: 42px; font-weight: bold; margin-bottom: 5px;'>
-                    ASA-PREDICTION MODEL 2
+                    ASA-PREDICTION MODEL 3
                 </h1>
                 <h2 style='color: #D32F2F; font-size: 28px; font-weight: 600; margin-top: 0px; line-height: 1.3;'>
                     Multi-criteria analysis of eco-efficient concrete from Technical, Environmental and Economic aspects
@@ -87,7 +87,7 @@ def show_academic_header():
             """, unsafe_allow_html=True)
             
     with col_right:
-        st.image("https://raw.githubusercontent.com/ayasanad14799-coder/ASA-PREDICTION-MODEL-2/main/OIP.jfif", width=130)
+        st.image("https://raw.githubusercontent.com/ayasanad14799-coder/ASA-PREDICTION-MODEL3-/main/OIP.jfif", width=130)
         
     st.divider()
 
@@ -209,7 +209,7 @@ def log_prediction_to_sheets(inputs, results):
         st.sidebar.error(f"Logging Error: {e}")
 
 # =============================================================================
-# 8. واجهة الإدخال والنتائج (تم تعديل المعالجة المنطقية للركام)
+# 8. واجهة الإدخال والنتائج
 # =============================================================================
 def show_input_section():
     st.markdown("### 🏗️ Design Mix Inputs (21 Parameters)")
@@ -237,25 +237,22 @@ def show_input_section():
         
     with c2:
         st.markdown("##### Natural Aggregates")
-        # التعديل هنا: نطلب من المستخدم إدخال الإجمالي وليس الطبيعي فقط
         total_coarse = st.number_input("Total Coarse Agg. (kg/m³)", value=1000.0, help="أدخل إجمالي وزن الزلط المطلوب للمتر المكعب هنا")
         nfa = st.number_input("NFA (kg/m³)", value=700.0)
         agg_size = st.number_input("Max Agg Size (mm)", value=20.0)
         
     with c3:
         st.markdown("##### Recycled Aggregates")
-        # التعديل هنا: نأخذ النسب فقط ونحسب الوزن في الخلفية
         rca_p = st.number_input("RCA (%)", value=0.0)
         mrca_p = st.number_input("MRCA (%)", value=0.0)
         rfa_w = st.number_input("RFA Weight (kg/m³)", value=0.0)
         rfa_p = st.number_input("RFA (%)", value=0.0)
         
-        # --- المعالجة البرمجية (Middleware Logic) ---
-        # الكود يترجم هندسياً ما أدخله المهندس
+        # --- المعالجة البرمجية ---
         rca_w = total_coarse * (rca_p / 100.0)
         mrca_w = total_coarse * (mrca_p / 100.0)
         nca = total_coarse - (rca_w + mrca_w)
-        if nca < 0: nca = 0.0 # حماية إضافية لو أدخل المستخدم نسبة أكبر من 100%
+        if nca < 0: nca = 0.0
 
     with c4:
         st.markdown("##### SCMs & Fibers")
@@ -268,7 +265,6 @@ def show_input_section():
         basalt = st.number_input("Basalt Fiber Vol (%)", value=0.0)
         natural = st.number_input("Natural Fiber (kg/m³)", value=0.0)
 
-    # التعديل هنا: رسالة تظهر للمستخدم ليطمئن أن الأوزان تم توزيعها صح قبل ضغطة الزر
     st.info(f"💡 **AI Logic Check (Net Weights):** Natural (NCA): **{nca:.1f} kg** | RCA: **{rca_w:.1f} kg** | MRCA: **{mrca_w:.1f} kg**")
 
     if st.button("🚀 Run Prediction & Analysis", use_container_width=True):
@@ -285,7 +281,6 @@ def show_input_section():
             if res:
                 st.success("✅ Analysis Completed: Using Hybrid AI-Engineering Model")
                 
-                # إرسال البيانات للشيت
                 log_prediction_to_sheets(inputs, res)
                 
                 t_mech, t_env, t_eco = st.tabs(["🏗️ Mechanical", "🌱 Environmental", "💰 Economic"])
@@ -315,13 +310,13 @@ def show_input_section():
 # =============================================================================
 def show_optimizer():
     st.header("⚖️ AI-Based Mix Optimizer")
-    st.markdown("Searches the 1,701-mix database for optimal eco-efficient alternatives.")
+    st.markdown("Searches the 1,617-mix database for optimal eco-efficient alternatives.")
     target_cs = st.number_input("Target Strength 28d (MPa)", value=40.0)
     tol = st.slider("Tolerance (± MPa)", 1.0, 10.0, 3.0)
     
     if st.button("Search Database"):
         try:
-            df = pd.read_excel('Ready_For_AI_Training.xlsx')
+            df = pd.read_excel('Final_Dataset_Flawless.xlsx')
             filtered = df[(df['CS_28'] >= target_cs - tol) & (df['CS_28'] <= target_cs + tol)]
             if not filtered.empty:
                 top = filtered.sort_values(by=['CO2', 'Energy'], ascending=[True, True]).head(5)
@@ -344,19 +339,19 @@ def show_performance():
                                   "CO2 Emissions", "Energy Demand"])
     
     metrics_data = {
-        "Compressive Strength (CS_28)": {"r2": "0.9706", "rmse": "2.20 MPa", "mae": "1.50 MPa", "cv": "0.8520", "prefix": "CS_28"},
-        "Tensile Strength (STS)": {"r2": "0.9566", "rmse": "0.26 MPa", "mae": "0.15 MPa", "cv": "0.7730", "prefix": "STS"},
-        "CO2 Emissions": {"r2": "0.9958", "rmse": "5.75 kg", "mae": "0.56 kg", "cv": "0.9152", "prefix": "CO2"},
-        "Energy Demand": {"r2": "0.9850", "rmse": "139.44 MJ", "mae": "9.08 MJ", "cv": "0.8221", "prefix": "Energy"}
+        "Compressive Strength (CS_28)": {"r2": "0.97", "rmse": "4.84 MPa", "mae": "3.24 MPa", "cv": "0.84", "prefix": "CS_28"},
+        "Tensile Strength (STS)": {"r2": "0.95", "rmse": "0.32 MPa", "mae": "0.18 MPa", "cv": "0.76", "prefix": "STS"},
+        "CO2 Emissions": {"r2": "0.99", "rmse": "18.43 kg", "mae": "2.37 kg", "cv": "0.90", "prefix": "CO2"},
+        "Energy Demand": {"r2": "0.97", "rmse": "468.12 MJ", "mae": "47.30 MJ", "cv": "0.82", "prefix": "Energy"}
     }
     
     data = metrics_data[target_choice]
     
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("R² Score", data["r2"])
-    c2.metric("RMSE", data["rmse"])
-    c3.metric("MAE", data["mae"])
-    c4.metric("Cross-Val Score (5-Fold)", data["cv"])
+    c1.metric("Training R² Score", data["r2"])
+    c2.metric("Testing RMSE", data["rmse"])
+    c3.metric("Testing MAE", data["mae"])
+    c4.metric("Cross-Val R² (5-Fold)", data["cv"])
     
     st.divider()
     st.subheader(f"🔬 Visual Diagnostics: {target_choice}")
@@ -436,9 +431,9 @@ def show_documentation():
         st.subheader("Core Model Information")
         st.markdown("""
         - **Algorithm:** Random Forest Regression (Multi-output Architecture)
-        - **Database:** 1,701 Experimental Samples
+        - **Database:** 1,617 Experimental Samples (Cleaned & Preprocessed)
         - **Methodology:** Integrates AI prediction with standard ACI 318 equations and Multi-Criteria Decision Making (MCDM).
-        - **Robustness:** Validated using 5-Fold Cross Validation
+        - **Robustness:** Validated using rigorous 5-Fold Cross Validation
         """)
     
     with doc_tabs[1]:
@@ -484,7 +479,7 @@ def main():
         tabs = st.tabs(["🏠 Home", "🚀 Predictor", "⚖️ Optimizer", "📈 Performance", "📝 Feedback", "📚 Docs"])
         
         with tabs[0]:
-            st.markdown("### Welcome to ASA-PREDICTION MODEL 2 Dashboard")
+            st.markdown("### Welcome to ASA-PREDICTION MODEL 3 Dashboard")
             st.markdown("#### 🎯 Your AI-Powered Tool for Eco-Efficient Concrete Design")
             
             info_col1, info_col2 = st.columns([2, 1])
@@ -512,7 +507,7 @@ def main():
             
             with info_col2:
                 st.markdown("##### 📊 Model Stats")
-                st.metric("Database Size", "1,701 samples")
+                st.metric("Database Size", "1,617 samples")
                 st.metric("Input Parameters", "21")
                 st.metric("Validation Method", "5-Fold CV")
                 st.success("✅ **Status:** Model Loaded & Ready")
