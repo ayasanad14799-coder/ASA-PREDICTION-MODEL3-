@@ -173,7 +173,7 @@ def show_radar_chart(results):
     st.plotly_chart(fig, use_container_width=True)
 
 # =============================================================================
-# 7. تسجيل البيانات في الشيت
+# 7. تسجيل البيانات في الشيت (تم تعديل اسم الصفحة هنا)
 # =============================================================================
 def log_prediction_to_sheets(inputs, results):
     try:
@@ -195,7 +195,7 @@ def log_prediction_to_sheets(inputs, results):
         }])
 
         try:
-            existing_data = conn.read(worksheet="Predictions_V2", ttl=0)
+            existing_data = conn.read(worksheet="Predictions_V3", ttl=0)
             if existing_data is not None and not existing_data.empty:
                 updated_df = pd.concat([existing_data, new_row], ignore_index=True)
             else:
@@ -203,7 +203,7 @@ def log_prediction_to_sheets(inputs, results):
         except:
             updated_df = new_row
             
-        conn.update(worksheet="Predictions_V2", data=updated_df)
+        conn.update(worksheet="Predictions_V3", data=updated_df)
         st.toast("✅ تم الحفظ في قاعدة البيانات بنجاح", icon="💾")
     except Exception as e:
         st.sidebar.error(f"Logging Error: {e}")
@@ -372,7 +372,7 @@ def show_performance():
     if os.path.exists(img_path3): st.image(img_path3, caption="Feature Importance Analysis", use_container_width=True)
 
 # =============================================================================
-# 11. نظام الفيدباك (متصل بجوجل شيت)
+# 11. نظام الفيدباك (متصل بجوجل شيت) (تم تعديل اسم الصفحة هنا)
 # =============================================================================
 def handle_feedback():
     st.header("📝 User Feedback & Experience")
@@ -407,12 +407,12 @@ def handle_feedback():
                 }])
                 
                 try:
-                    existing_f = conn.read(worksheet="Feedback_V2", ttl=0)
+                    existing_f = conn.read(worksheet="Feedback_V3", ttl=0)
                     updated_f = pd.concat([existing_f, feedback_row], ignore_index=True)
                 except:
                     updated_f = feedback_row
                     
-                conn.update(worksheet="Feedback_V2", data=updated_f)
+                conn.update(worksheet="Feedback_V3", data=updated_f)
                 st.success("✅ Thank you! Feedback recorded successfully in database.")
                 st.balloons()
                 
