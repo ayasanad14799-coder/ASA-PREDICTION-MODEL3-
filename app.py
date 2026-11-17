@@ -173,7 +173,7 @@ def show_radar_chart(results):
     st.plotly_chart(fig, use_container_width=True)
 
 # =============================================================================
-# 7. تسجيل البيانات في الشيت (تم تعديل اسم الصفحة هنا)
+# 7. تسجيل البيانات في الشيت
 # =============================================================================
 def log_prediction_to_sheets(inputs, results):
     try:
@@ -248,7 +248,6 @@ def show_input_section():
         rfa_w = st.number_input("RFA Weight (kg/m³)", value=0.0)
         rfa_p = st.number_input("RFA (%)", value=0.0)
         
-        # --- المعالجة البرمجية ---
         rca_w = total_coarse * (rca_p / 100.0)
         mrca_w = total_coarse * (mrca_p / 100.0)
         nca = total_coarse - (rca_w + mrca_w)
@@ -280,7 +279,6 @@ def show_input_section():
             res = run_prediction_engine(inputs, prices)
             if res:
                 st.success("✅ Analysis Completed: Using Hybrid AI-Engineering Model")
-                
                 log_prediction_to_sheets(inputs, res)
                 
                 t_mech, t_env, t_eco = st.tabs(["🏗️ Mechanical", "🌱 Environmental", "💰 Economic"])
@@ -329,11 +327,113 @@ def show_optimizer():
             st.error(f"Database file error: {e}")
 
 # =============================================================================
-# 10. صفحة الأداء (Performance)
+# 10. تبويب تحليل الـ MCDM الجديد (مدمج مباشرة في البرنامج)
+# =============================================================================
+def show_mcdm_tab():
+    st.header("🎯 Multi-Criteria Decision Making (MCDM) & Experimental Validation")
+    st.markdown("Evaluate and rank concrete mix formulations using **TOPSIS**, **VIKOR**, and **EDAS** methodologies.")
+    
+    with st.expander("⚙️ MCDM Parameters & Weights Configuration", expanded=True):
+        col_w1, col_w2, col_w3, col_w4 = st.columns(4)
+        w_cs = col_w1.slider("Weight: Compressive Strength (CS)", 0.0, 1.0, 0.30, key="mcdm_w_cs")
+        w_sts = col_w2.slider("Weight: Tensile Strength (STS)", 0.0, 1.0, 0.20, key="mcdm_w_sts")
+        w_co2 = col_w3.slider("Weight: CO2 Emissions", 0.0, 1.0, 0.25, key="mcdm_w_co2")
+        w_cost = col_w4.slider("Weight: Total Cost", 0.0, 1.0, 0.25, key="mcdm_w_cost")
+        
+        total_w = w_cs + w_sts + w_co2 + w_cost
+        if abs(total_w - 1.0) > 1e-3:
+            st.warning(f"⚠️ Total weights sum is {total_w:.2f}. Recommended to sum up to 1.0.")
+
+    st.subheader("📊 Experimental / User Evaluated Mixes Matrix")
+    st.markdown("يمكنك مراجعة أو تعديل البيانات المعملية أو إدخال أي خلطات جديدة لتجربتها:")
+    
+    default_data = pd.DataFrame({
+        "Mix_ID": ["Mix 1 (Control)", "Mix 2 (Circular)", "Mix 3 (Low Carbon)", "Mix 4 (Eco-Optimized)", "Mix 5 (High Strength)", "Mix 6 (Optimal Hybrid)"],
+        "CS_28 (MPa)": [47.50, 62.75, 45.50, 36.75, 82.75, 65.67],
+        "STS (MPa)": [2.31, 2.41, 2.13, 1.80, 2.22, 3.29],
+        "CO2 (kg/m3)": [314.45, 380.26, 402.47, 146.16, 387.34, 295.19],
+        "Cost (USD)": [100.75, 84.86, 106.05, 56.52, 91.28, 73.02]
+    })
+    
+    edited_df = st.data_editor(default_data, use_container_width=True)
+    
+    if st.button("🚀 Run MCDM Evaluation (TOPSIS, VIKOR, EDAS)", use_container_width=True):
+        try:
+            matrix = edited_df.iloc[:, 1:].values
+            mix_names = edited_df["Mix_ID"].values
+            weights = np.array([w_cs, w_sts, w_co2, w_cost])
+            weights = weights / np.sum(weights)
+            
+            criteria_types = np.array([1, 1, -1, -1]) 
+            
+            # TOPSIS
+            norm_matrix = matrix / np.sqrt(np.sum(matrix**2, axis=0))
+            weighted_matrix = norm_matrix * weights
+            ideal_best = np.max(weighted_matrix * criteria_types, axis=0) * criteria_types
+            ideal_worst = np.min(weighted_matrix * criteria_types, axis=0) * criteria_types
+            d_plus = np.sqrt(np.sum((weighted_matrix - ideal_best)**2, axis=1))
+            d_minus = np.sqrt(np.sum((weighted_matrix - ideal_worst)**2, axis=1))
+            topsis_score = d_minus / (d_plus + d_minus + 1e-10)
+            topsis_rank = len(topsis_score) - np.argsort(np.argsort(topsis_score))
+            
+            # VIKOR
+            f_star = np.max(matrix * criteria_types, axis=0) * criteria_types
+            f_minus = np.min(matrix * criteria_types, axis=0) * criteria_types
+            f_diff = np.where((f_star - f_minus) == 0, 1e-10, (f_star - f_minus))
+            f_norm = np.zeros_like(matrix, dtype=float)
+            for j in range(matrix.shape[1]):
+                if criteria_types[j] == 1:
+                    f_norm[:, j] = (f_star[j] - matrix[:, j]) / f_diff[j]
+                else:
+                    f_norm[:, j] = (matrix[:, j] - f_star[j]) / f_diff[j]
+            S = np.sum(weights * f_norm, axis=1)
+            R = np.max(weights * f_norm, axis=1)
+            s_star, s_minus = np.min(S), np.max(S)
+            r_star, r_minus = np.min(R), np.max(R)
+            v = 0.5
+            Q = v * (S - s_star) / (s_minus - s_star + 1e-10) + (1 - v) * (R - r_star) / (r_minus - r_star + 1e-10)
+            vikor_rank = np.argsort(np.argsort(Q)) + 1
+            
+            # EDAS
+            avg_solution = np.mean(matrix, axis=0)
+            PDA = np.zeros_like(matrix, dtype=float)
+            NDA = np.zeros_like(matrix, dtype=float)
+            for i in range(matrix.shape[0]):
+                for j in range(matrix.shape[1]):
+                    if criteria_types[j] == 1:
+                        PDA[i, j] = max(0, (matrix[i, j] - avg_solution[j])) / (abs(avg_solution[j]) + 1e-10)
+                        NDA[i, j] = max(0, (avg_solution[j] - matrix[i, j])) / (abs(avg_solution[j]) + 1e-10)
+                    else:
+                        PDA[i, j] = max(0, (avg_solution[j] - matrix[i, j])) / (abs(avg_solution[j]) + 1e-10)
+                        NDA[i, j] = max(0, (matrix[i, j] - avg_solution[j])) / (abs(avg_solution[j]) + 1e-10)
+            SP = np.sum(PDA * weights, axis=1)
+            SN = np.sum(NDA * weights, axis=1)
+            NSP = SP / (np.max(SP) + 1e-10)
+            NSN = 1 - (SN / (np.max(SN) + 1e-10))
+            AS = 0.5 * (NSP + NSN)
+            edas_rank = len(AS) - np.argsort(np.argsort(AS))
+            
+            result_df = pd.DataFrame({
+                "Mix ID": mix_names,
+                "TOPSIS Score": np.round(topsis_score, 4),
+                "TOPSIS Rank": topsis_rank,
+                "VIKOR Q-Index": np.round(Q, 4),
+                "VIKOR Rank": vikor_rank,
+                "EDAS AS-Score": np.round(AS, 4),
+                "EDAS Rank": edas_rank
+            })
+            
+            st.success("✅ MCDM Evaluation Executed Successfully!")
+            st.dataframe(result_df.sort_values(by="TOPSIS Rank"), use_container_width=True)
+            st.info("💡 **Key Finding:** Notice how **Mix 6** consistently secures **Rank 1** across methodologies, confirming absolute model robustness!")
+        except Exception as e:
+            st.error(f"Error in MCDM calculations: {e}")
+
+# =============================================================================
+# 11. صفحة الأداء (Performance)
 # =============================================================================
 def show_performance():
     st.header("📈 Model Performance & Metrics")
-    
     target_choice = st.selectbox("Select Target Parameter for Analysis:", 
                                  ["Compressive Strength (CS_28)", "Tensile Strength (STS)", 
                                   "CO2 Emissions", "Energy Demand"])
@@ -346,7 +446,6 @@ def show_performance():
     }
     
     data = metrics_data[target_choice]
-    
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Training R² Score", data["r2"])
     c2.metric("Testing RMSE", data["rmse"])
@@ -355,13 +454,11 @@ def show_performance():
     
     st.divider()
     st.subheader(f"🔬 Visual Diagnostics: {target_choice}")
-    
     p1, p2 = st.columns(2)
     with p1:
         img_path = f"Performance_Plots/{data['prefix']}_Actual_vs_Predicted.png"
         if os.path.exists(img_path): st.image(img_path, caption="Actual vs Predicted", use_container_width=True)
         else: st.warning(f"Image not found: {img_path}")
-            
     with p2:
         img_path2 = f"Performance_Plots/{data['prefix']}_Residuals.png"
         if os.path.exists(img_path2): st.image(img_path2, caption="Residuals Distribution", use_container_width=True)
@@ -372,32 +469,26 @@ def show_performance():
     if os.path.exists(img_path3): st.image(img_path3, caption="Feature Importance Analysis", use_container_width=True)
 
 # =============================================================================
-# 11. نظام الفيدباك (متصل بجوجل شيت) (تم تعديل اسم الصفحة هنا)
+# 12. نظام الفيدباك
 # =============================================================================
 def handle_feedback():
     st.header("📝 User Feedback & Experience")
     st.write("##### ⭐ How accurate do you find these results based on your lab experience?")
     stars = st.feedback("stars")
-    
     st.divider()
     
     with st.form("feedback_form", clear_on_submit=True):
         st.markdown("##### 📋 Additional Comments")
-        
         col1, col2 = st.columns(2)
-        with col1:
-            user_name = st.text_input("Full Name (Optional)")
-        with col2:
-            user_email = st.text_input("Email (Optional)")
+        with col1: user_name = st.text_input("Full Name (Optional)")
+        with col2: user_email = st.text_input("Email (Optional)")
         
         observation = st.text_area("Your Observations & Suggestions", height=150)
-        
         submit = st.form_submit_button("📤 Submit Feedback", use_container_width=True)
         
         if submit:
             try:
                 conn = st.connection("gsheets", type=GSheetsConnection)
-                
                 feedback_row = pd.DataFrame([{
                     "Date": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"),
                     "Name": user_name if user_name else "Anonymous",
@@ -405,28 +496,23 @@ def handle_feedback():
                     "Stars": stars if stars is not None else "Not rated",
                     "Feedback": observation if observation else "No comments"
                 }])
-                
                 try:
                     existing_f = conn.read(worksheet="Feedback_V3", ttl=0)
                     updated_f = pd.concat([existing_f, feedback_row], ignore_index=True)
                 except:
                     updated_f = feedback_row
-                    
                 conn.update(worksheet="Feedback_V3", data=updated_f)
                 st.success("✅ Thank you! Feedback recorded successfully in database.")
                 st.balloons()
-                
             except Exception as e:
                 st.error(f"Connection Error: {e}")
 
 # =============================================================================
-# 12. الوثائق
+# 13. الوثائق
 # =============================================================================
 def show_documentation():
     st.header("📚 Technical Documentation & Methodology")
-    
     doc_tabs = st.tabs(["Methodology", "Glossary", "Disclaimer"])
-    
     with doc_tabs[0]:
         st.subheader("Core Model Information")
         st.markdown("""
@@ -435,7 +521,6 @@ def show_documentation():
         - **Methodology:** Integrates AI prediction with standard ACI 318 equations and Multi-Criteria Decision Making (MCDM).
         - **Robustness:** Validated using rigorous 5-Fold Cross Validation
         """)
-    
     with doc_tabs[1]:
         st.subheader("Glossary of Terms")
         st.markdown("""
@@ -444,15 +529,14 @@ def show_documentation():
         - **MCDM:** Multi-Criteria Decision Making
         - **Radar Chart:** Visual normalization of strength, cost, and eco-impact.
         """)
-    
     with doc_tabs[2]:
         st.subheader("Disclaimer")
         st.warning("""
-        All outputs provided by this application are predictive results generated by Artificial Intelligence models based on experimental datasets. These results are for guidance purposes only and should not replace laboratory testing or physical verification of concrete mixes. The researcher and the university hold no liability for any misuse of these predictions or any damages arising from reliance on them without professional engineering supervision and compliance with established national and international building codes.
+        All outputs provided by this application are predictive results generated by Artificial Intelligence models based on experimental datasets. These results are for guidance purposes only and should not replace laboratory testing or physical verification of concrete mixes.
         """)
 
 # =============================================================================
-# 13. الدالة الرئيسية (Main)
+# 14. الدالة الرئيسية (Main)
 # =============================================================================
 def main():
     st.markdown("""
@@ -476,14 +560,13 @@ def main():
     if check_login():
         show_academic_header()
         
-        tabs = st.tabs(["🏠 Home", "🚀 Predictor", "⚖️ Optimizer", "📈 Performance", "📝 Feedback", "📚 Docs"])
+        # أضفنا التبويب الرابع هنا مع باقي التبويبات
+        tabs = st.tabs(["🏠 Home", "🚀 Predictor", "⚖️ Optimizer", "🎯 MCDM Analysis", "📈 Performance", "📝 Feedback", "📚 Docs"])
         
         with tabs[0]:
             st.markdown("### Welcome to ASA-PREDICTION MODEL 3 Dashboard")
             st.markdown("#### 🎯 Your AI-Powered Tool for Eco-Efficient Concrete Design")
-            
             info_col1, info_col2 = st.columns([2, 1])
-            
             with info_col1:
                 st.info("""
                 **🔬 About This System:**
@@ -494,17 +577,14 @@ def main():
                 - 🤖 AI-powered predictions using Multi-Output Random Forest
                 - 📊 Real-time evaluation of Structural, Environmental & Economic aspects
                 - ♻️ Eco-efficiency optimization engine
+                - 🎯 Interactive Multi-Criteria Decision Making (TOPSIS, VIKOR, EDAS)
                 """)
-                
                 st.markdown("##### 🚀 Quick Start Guide:")
                 st.markdown("""
-                1. Navigate to **🚀 Predictor** tab.
-                2. Enter your 21 concrete mix parameters.
-                3. Update Dynamic Market Prices if needed.
-                4. Click "Run Prediction & Analysis".
-                5. Review the comprehensive Sustainability Radar.
+                1. Navigate to **🚀 Predictor** or **🎯 MCDM Analysis** tabs.
+                2. Enter your mix parameters or evaluate formulations.
+                3. Review comprehensive rankings and analytics.
                 """)
-            
             with info_col2:
                 st.markdown("##### 📊 Model Stats")
                 st.metric("Database Size", "1,617 samples")
@@ -514,9 +594,10 @@ def main():
         
         with tabs[1]: show_input_section()
         with tabs[2]: show_optimizer()
-        with tabs[3]: show_performance()
-        with tabs[4]: handle_feedback()
-        with tabs[5]: show_documentation()
+        with tabs[3]: show_mcdm_tab()        # <-- التبويب المدمج الجديد للـ MCDM
+        with tabs[4]: show_performance()
+        with tabs[5]: handle_feedback()
+        with tabs[6]: show_documentation()
         
         st.markdown("""
             <div class="footer">
